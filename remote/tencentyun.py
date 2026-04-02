@@ -732,10 +732,14 @@ class TencentYunRemote:
 
             vpc_id = str(instance.get("VirtualPrivateCloudId", ""))
             os_name = str(instance.get("OsName", ""))
+            instance_uuid = str(instance.get("InstanceId", "")).strip()
+
+            # 调试日志：打印虚拟机 InstanceId 用于对比
+            print(f"[DEBUG] VM: InstanceId={instance_uuid}")
 
             row = {
                 "ci_name": instance.get("InstanceName", ""),
-                "instance_id": instance.get("InstanceId", ""),
+                "instance_id": instance_uuid,
                 "ip_address": self._first_ip(instance.get("PrivateIpAddress", "")),
                 "resourcepoolid": host.get("Pool", ""),
                 "resourcepoolname": host.get("Pool", ""),
@@ -774,6 +778,18 @@ class TencentYunRemote:
             disk_usage = str(disk.get("DiskUsage", "")).strip().upper()
             vm_instance_id = str(disk.get("InstanceUuid", "")).strip()
             vm_ci_id = str(vm_ci_id_map.get(vm_instance_id, "")).strip() if vm_instance_id else ""
+            
+            # 调试日志：打印磁盘的 InstanceUuid 和查询结果
+            print(f"[DEBUG] Disk: DiskId={disk.get('DiskId', '')}, InstanceUuid={vm_instance_id}, vm_ci_id={vm_ci_id}, found={vm_instance_id in vm_ci_id_map if vm_instance_id else False}")
+            
+            # 构建调试信息
+            debug_info = {
+                "disk_id": disk.get("DiskId", ""),
+                "instance_uuid": vm_instance_id,
+                "vm_ci_id_found": vm_ci_id,
+                "vm_ci_id_map_has_key": vm_instance_id in vm_ci_id_map if vm_instance_id else False,
+                "vm_ci_id_map_keys_count": len(vm_ci_id_map),
+            }
 
             row = {
                 "ci_name": disk.get("DiskName", ""),
@@ -789,6 +805,7 @@ class TencentYunRemote:
                 "volumetype": disk.get("DiskType", ""),
                 "businesszone": BUSINESS_ZONE,
                 "syncstatus": SYNC_STATUS,
+                "tagtagtag": debug_info,
             }
             rows.append({
                 k: v for k, v in row.items() if v not in (None, "", []) or k in ("vmid",)
