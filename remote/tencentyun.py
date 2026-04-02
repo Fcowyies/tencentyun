@@ -772,22 +772,26 @@ class TencentYunRemote:
     ) -> List[Dict[str, Any]]:
         rows: List[Dict[str, Any]] = []
         for disk in disks:
-            host_ip = str(disk.get("HostIp", "")).strip()
-            host = host_by_ip.get(host_ip, {})
-            placement = disk.get("Placement", {}) if isinstance(disk.get("Placement"), dict) else {}
-            disk_usage = str(disk.get("DiskUsage", "")).strip().upper()
+            # 核心逻辑：通过 InstanceUuid 查找对应的 CMDB ciId
+            # 注意：腾讯云的 InstanceUuid 对应 CMDB 虚拟机的 instance_id 字段
             vm_instance_id = str(disk.get("InstanceUuid", "")).strip()
-            vm_ci_id = str(vm_ci_id_map.get(vm_instance_id, "")).strip() if vm_instance_id else ""
+            vm_ci_id = ""
+            map_exists = False
             
-            # 调试日志：打印磁盘的 InstanceUuid 和查询结果
-            print(f"[DEBUG] Disk: DiskId={disk.get('DiskId', '')}, InstanceUuid={vm_instance_id}, vm_ci_id={vm_ci_id}, found={vm_instance_id in vm_ci_id_map if vm_instance_id else False}")
+            if vm_instance_id:
+                vm_ci_id = str(vm_ci_id_map.get(vm_instance_id, "")).strip()
+                map_exists = vm_instance_id in vm_ci_id_map
+                if not vm_ci_id:
+                    logger.warning(f"Disk {disk.get('DiskId', '')} has InstanceUuid {vm_instance_id}, but no matching VM found in CMDB (map_exists={map_exists})")
+            else:
+                logger.info(f"Disk {disk.get('DiskId', '')} is not attached to any VM (InstanceUuid is empty)")
             
-            # 构建调试信息
+            # 构建调试信息用于 tagtagtag
             debug_info = {
                 "disk_id": disk.get("DiskId", ""),
                 "instance_uuid": vm_instance_id,
                 "vm_ci_id_found": vm_ci_id,
-                "vm_ci_id_map_has_key": vm_instance_id in vm_ci_id_map if vm_instance_id else False,
+                "vm_ci_id_map_has_key": map_exists,
                 "vm_ci_id_map_keys_count": len(vm_ci_id_map),
             }
 
@@ -810,6 +814,23 @@ class TencentYunRemote:
             rows.append({
                 k: v for k, v in row.items() if v not in (None, "", []) or k in ("vmid",)
             })
+            
+            # 输出结构化调试日志 (格式参考 vt_net_cloud_sub)
+            debug_log_entry = {
+                "content": {
+                    "disk_id": disk.get("DiskId", ""),
+                    "instance_uuid": vm_instance_id,
+                    "vm_ci_id_found": vm_ci_id if vm_ci_id else None,
+                    "map_lookup_key": vm_instance_id,
+                    "map_exists": map_exists,
+                    "total_vm_in_map": len(vm_ci_id_map)
+                },
+                "modelId": "debug_vm_disk_mapping",
+                "completed": 0,
+                "exceptions": []
+            }
+            # 使用 info 级别输出，确保能在平台日志中看到
+            logger.info(f"[DEBUG_MAPPING] {json.dumps(debug_log_entry, ensure_ascii=False)}")
         return rows
 
     @staticmethod
@@ -851,8 +872,16 @@ class TencentYunRemote:
         for model_id in MODEL_IDS:
             rows = assets.get(model_id, [])
             if rows:
-                for row in rows:
-                    result.append(self._model_result(model_id, row))
+                # 将同一个 model_id 的所有记录合并到一个对象中
+                result.append({
+                    "content": {
+                        "records": rows,
+                        "syncdate": self.syncdate,
+                    },
+                    "modelId": model_id,
+                    "completed": self.completed,
+                    "exceptions": self.exceptions,
+                })
             else:
                 result.append(self._model_result(model_id, {}))
 
