@@ -1,0 +1,12 @@
+{
+    "id": "tencentyun",
+    "name": "腾讯云",
+    "enName": "tencentyun",
+    "desc": "用来采集腾讯云的属性",
+    "enDesc": "tencentyun",
+    "version": "1.0",
+    "categories": [
+        "cloud_resources"
+    ],
+    "iconCode": "tencent_cloud"
+}

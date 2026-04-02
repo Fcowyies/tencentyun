@@ -1,0 +1,33 @@
+{
+  "param": [
+    {
+      "extra": [],
+      "basic": [
+        {
+          "extra_en": "Tencent Cloud SecretId",
+          "field": "script.secret_id",
+          "placeholder_en": "Tencent Cloud SecretId",
+          "extra": "腾讯云访问密钥 ID",
+          "label": "SecretId",
+          "placeholder": "请输入 SecretId",
+          "label_en": "secret_id",
+          "type": "input",
+          "initialValue": "",
+          "required": true
+        },
+        {
+          "extra_en": "Tencent Cloud SecretKey",
+          "field": "script.secret_key",
+          "placeholder_en": "Tencent Cloud SecretKey",
+          "extra": "腾讯云访问密钥 Key",
+          "label": "SecretKey",
+          "placeholder": "请输入 SecretKey",
+          "label_en": "secret_key",
+          "type": "password",
+          "initialValue": "",
+          "required": true
+        }
+      ]
+    }
+  ]
+}
